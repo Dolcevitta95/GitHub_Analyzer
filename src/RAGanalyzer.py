@@ -1,15 +1,15 @@
+from datetime import datetime
 import os
 from typing import List, Dict, Any
 from git import Repo
-from langchain.document_loaders import TextLoader
+from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import OllamaEmbeddings
-from langchain.vectorstores import Chroma
+from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA
-from langchain.llms import Ollama
+from langchain_community.llms import Ollama
 import tempfile
 import logging
-import datetime
 
 class GitHubRAGAnalyzer:
     def __init__(
