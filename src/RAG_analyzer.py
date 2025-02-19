@@ -3,27 +3,35 @@ import os
 from typing import List, Dict, Any
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA
-from langchain_community.llms import Ollama
+from langchain_groq import ChatGroq
+from dotenv import load_dotenv
 import logging
 
 class GitHubRAGAnalyzer:
     def __init__(
         self,
         vector_store_path: str = "./vector_store",
-        model_name: str = "mistral"  # Nombre del modelo en Ollama
+        model_name: str = "mixtral-8x7b-32768",  # Modelo por defecto en Groq
+        api_key: str = None
     ):
         """
-        Inicializa el analizador RAG para repositorios de GitHub usando Ollama.
+        Inicializa el analizador RAG para repositorios de GitHub usando Groq.
         
         Args:
             vector_store_path: Ruta donde se almacenará la base de datos vectorial
-            model_name: Nombre del modelo en Ollama (por defecto 'mistral')
+            model_name: Nombre del modelo en Groq
+            api_key: API key de Groq (opcional si está en variables de entorno)
         """
+        load_dotenv()  # Cargar variables de entorno
         self.vector_store_path = vector_store_path
         self.model_name = model_name
+        self.api_key = api_key or os.getenv("GROQ_API_KEY")
+        if not self.api_key:
+            raise ValueError("Se requiere API key de Groq")
+        
         self.setup_logging()
         self.initialize_components()
 
@@ -37,15 +45,42 @@ class GitHubRAGAnalyzer:
 
     def initialize_components(self):
         """Inicializa los componentes necesarios para RAG"""
-        # Configurar Ollama para embeddings y LLM
-        self.embeddings = OllamaEmbeddings(model=self.model_name)
-        self.llm = Ollama(model=self.model_name)
+        # Usar HuggingFace para embeddings 
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
+        
+        # Configurar Groq como LLM
+        self.llm = ChatGroq(
+            api_key=self.api_key,
+            model_name=self.model_name
+        )
 
         # Configurar el divisor de texto
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=200,
             length_function=len
+        )
+
+    def create_qa_chain(self) -> RetrievalQA:
+        """
+        Crea una cadena de preguntas y respuestas usando el vector store.
+        
+        Returns:
+            Cadena RetrievalQA configurada
+        """
+        # Cargar vector store existente
+        vector_store = Chroma(
+            persist_directory=self.vector_store_path,
+            embedding_function=self.embeddings
+        )
+        
+        # Crear y retornar la cadena QA
+        return RetrievalQA.from_chain_type(
+            llm=self.llm,
+            chain_type="stuff",
+            retriever=vector_store.as_retriever()
         )
 
     def process_repository(self, repo_path: str) -> Dict[str, Any]:
@@ -62,14 +97,13 @@ class GitHubRAGAnalyzer:
             # Procesar archivos
             documents = self._process_files(repo_path)
             
-            # Crear vector store (opcional, si Andrea lo necesita)
+            # Crear vector store si Andrea lo ve necesario en su parte del código
             vector_store = Chroma.from_documents(
                 documents,
                 self.embeddings,
                 persist_directory=self.vector_store_path
             )
             
-            # Devolver los documentos procesados y la fecha de análisis
             return {
                 "documentos_procesados": documents,
                 "fecha_análisis": str(datetime.now())
