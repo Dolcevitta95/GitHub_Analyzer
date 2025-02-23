@@ -435,3 +435,15 @@ class GitHubRAGAnalyzer:
                 "recomendaciones": ["Error al generar recomendaciones"],
                 "puntuacion_madurez": 0
             }
+
+    if __name__ == "__main__":
+        try:
+            analyzer = GitHubRAGAnalyzer(api_key="test_api_key")
+            result = analyzer.analyze_requirements_completion(
+                repo_url="https://github.com/test/repo",
+                briefing_path="path/to/briefing.pdf"
+            )
+            print(result)
+        except Exception as e:
+            print(f"Error: {e}")
+
