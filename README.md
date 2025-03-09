@@ -1,4 +1,4 @@
-![RepoScope Banner](RepoScope.gif)
+
 
 # RepoScope: Analizador de Repositorios GitHub Potenciado por IA
 
